@@ -5,6 +5,8 @@ Imports outlook = Microsoft.Office.Interop.Outlook
 
 Public Class frmSearch
 
+    Private fmAttachments As frmAttachments
+
     Private Sub btnLoadFolders_Click(sender As Object, e As EventArgs) Handles btnLoadFolders.Click
 
         Dim app As outlook.Application = Globals.ThisAddIn.Application
@@ -61,6 +63,12 @@ Public Class frmSearch
         End If
     End Sub
 
+    Private Sub tvFolders_NodeMouseDoubleClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseDoubleClick
+        SearchOLItems()
+    End Sub
+    ''' <summary>
+    ''' Loop through all folder and subfolder items one by one and search for the searchstring
+    ''' </summary>
     Sub SearchOLItems()
 
         Dim SubFolderName As String
@@ -81,10 +89,13 @@ Public Class frmSearch
             olFldr = olNs.GetFolderFromID(strArr(0), strArr(1))
 
             lstResults.Items.Clear()
+            lstResults.ListViewItemSorter = Nothing
+            lstResults.BeginUpdate()
             ListFldrItems(olFldr, txtSearch.Text)
         Catch ex As Exception
             MsgBox(ex.Message)
         Finally
+            lstResults.EndUpdate()
             Me.Cursor = Cursors.Default
         End Try
 
@@ -251,7 +262,6 @@ Public Class frmSearch
             lstResults.ListViewItemSorter = New ListViewItemComparer(e.Column, lstResults.Sorting)
         End If
 
-        lstResults.Sort()
     End Sub
 
     Private Sub tvFolders_NodeMouseClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseClick
@@ -264,42 +274,7 @@ Public Class frmSearch
         app.ActiveExplorer.CurrentFolder = fldr
     End Sub
 
-    ' Implements the manual sorting of items by columns.
-    Class ListViewItemComparer
-        Implements IComparer
 
-        Private col As Integer
-        Private Shared sortOrderModifier As Integer = 1
-
-        Public Sub New()
-            col = 0
-        End Sub
-
-        Public Sub New(column As Integer, srtOrder As SortOrder)
-            col = column
-            If (srtOrder = SortOrder.Descending) Then
-                sortOrderModifier = -1
-            ElseIf (srtOrder = SortOrder.Ascending) Then
-                sortOrderModifier = 1
-            End If
-        End Sub
-
-        Public Function Compare(x As Object, y As Object) As Integer Implements IComparer.Compare
-            Dim returnVal As Integer
-
-            If TypeOf x Is Date And TypeOf y Is Date Then
-                returnVal = DateTime.Compare(x, y)
-            ElseIf TypeOf x Is Date And TypeOf y Is Date Then
-                returnVal = x.CompareTo(y)
-            Else
-                ' If not numeric and not date then compare as string
-                returnVal = [String].Compare(CType(x, ListViewItem).SubItems(col).Text, CType(y, ListViewItem).SubItems(col).Text)
-            End If
-
-            Return returnVal * sortOrderModifier
-
-        End Function
-    End Class
 
     Private Sub lstResults_ItemDrag(sender As Object, e As ItemDragEventArgs) Handles lstResults.ItemDrag
         lstResults.DoDragDrop(lstResults.SelectedItems, DragDropEffects.Move)
@@ -353,4 +328,41 @@ Public Class frmSearch
         End Try
 
     End Function
+
+    Private Sub bnAttachments_Click(sender As Object, e As EventArgs) Handles bnAttachments.Click
+        Dim AttList As List(Of outlook.Attachment)
+
+        AttList = FindAttachments()
+
+        If AttList.Count > 0 Then
+            ShowForm(fmAttachments, GetType(frmAttachments))
+            fmAttachments.mAttachments = AttList
+            fmAttachments.PopulateList()
+        End If
+
+    End Sub
+
+    ''' <summary>
+    ''' Find the attachments of all mail items in the resultset
+    ''' </summary>
+    Function FindAttachments() As List(Of outlook.Attachment)
+        Dim key As String
+        Dim mlIt As outlook.MailItem
+        Dim mlAtt As outlook.Attachment
+        Dim mlAtts As New List(Of outlook.Attachment)
+        Try
+            For Each lvi As ListViewItem In lstResults.Items
+                key = lvi.Name
+                mlIt = GetMailItem(key)
+                For Each mlAtt In mlIt.Attachments
+                    mlAtts.Add(mlAtt)
+                Next
+            Next
+            Return mlAtts
+        Catch
+            Return Nothing
+        End Try
+    End Function
+
+
 End Class

@@ -22,12 +22,15 @@ Partial Class frmSearch
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
+        Me.components = New System.ComponentModel.Container()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(frmSearch))
         Me.tvFolders = New System.Windows.Forms.TreeView()
         Me.lstResults = New System.Windows.Forms.ListView()
         Me.btnLoadFolders = New System.Windows.Forms.Button()
         Me.Label1 = New System.Windows.Forms.Label()
         Me.txtSearch = New System.Windows.Forms.TextBox()
+        Me.bnAttachments = New System.Windows.Forms.Button()
+        Me.ToolTip1 = New System.Windows.Forms.ToolTip(Me.components)
         Me.SuspendLayout()
         '
         'tvFolders
@@ -81,11 +84,22 @@ Partial Class frmSearch
         Me.txtSearch.Size = New System.Drawing.Size(227, 22)
         Me.txtSearch.TabIndex = 4
         '
+        'bnAttachments
+        '
+        Me.bnAttachments.Image = Global.Outlook_Tools_Addin.My.Resources.Resources.paperclip_button_32
+        Me.bnAttachments.Location = New System.Drawing.Point(946, 22)
+        Me.bnAttachments.Name = "bnAttachments"
+        Me.bnAttachments.Size = New System.Drawing.Size(49, 42)
+        Me.bnAttachments.TabIndex = 5
+        Me.ToolTip1.SetToolTip(Me.bnAttachments, "Show attachments in separate window")
+        Me.bnAttachments.UseVisualStyleBackColor = True
+        '
         'frmSearch
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(8.0!, 16.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(1067, 535)
+        Me.Controls.Add(Me.bnAttachments)
         Me.Controls.Add(Me.txtSearch)
         Me.Controls.Add(Me.Label1)
         Me.Controls.Add(Me.btnLoadFolders)
@@ -104,4 +118,6 @@ Partial Class frmSearch
     Friend WithEvents btnLoadFolders As Windows.Forms.Button
     Friend WithEvents Label1 As Windows.Forms.Label
     Friend WithEvents txtSearch As Windows.Forms.TextBox
+    Friend WithEvents bnAttachments As Windows.Forms.Button
+    Friend WithEvents ToolTip1 As Windows.Forms.ToolTip
 End Class

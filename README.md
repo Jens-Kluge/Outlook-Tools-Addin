@@ -13,3 +13,5 @@ So far this outlook addin can:
 The application searches by looping through all email items in the folder and subfolders. This search method is slower than the standard OL search, but it also works when the OL search does not function for some reason. This addin could be customized to perform further actions on the selected folders/email items. In particular, it could be useful for customized processing of email attachments. I am open to suggestions what it should be able to do in the future. 
 
 ![search form](https://github.com/Jens-Kluge/Outlook-Tools-Addin/blob/master/ol%20searchfolder.png)
+
+![search form and attachment form](https://github.com/Jens-Kluge/Outlook-Tools-Addin/blob/master/OT%20Addin%20Capture.GIF)

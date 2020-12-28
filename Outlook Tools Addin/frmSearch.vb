@@ -1,5 +1,6 @@
 ﻿Imports System.Collections
 Imports System.Windows.Forms
+Imports System.Drawing
 Imports outlook = Microsoft.Office.Interop.Outlook
 
 Public Class frmSearch
@@ -194,8 +195,11 @@ Public Class frmSearch
         Dim mlIt As outlook.MailItem
         olNs = app.GetNamespace("MAPI")
         IDs = Split(key, "|")
-
-        olItem = olNs.GetItemFromID(IDs(0), IDs(1))
+        Try
+            olItem = olNs.GetItemFromID(IDs(0), IDs(1))
+        Catch ex As Exception
+            Return Nothing
+        End Try
 
         If olItem.Class = outlook.OlObjectClass.olMail Then
             mlIt = olItem
@@ -203,6 +207,21 @@ Public Class frmSearch
         Else
             GetMailItem = Nothing
         End If
+    End Function
+
+    Function GetOLFolder(key As String) As outlook.Folder
+        Dim app As outlook.Application = Globals.ThisAddIn.Application
+        Dim IDs() As String
+        Dim olFolder As outlook.Folder
+
+        Dim olNs As outlook.NameSpace = app.GetNamespace("MAPI")
+        IDs = Split(key, "|")
+        Try
+            olFolder = olNs.GetFolderFromID(IDs(0), IDs(1))
+            Return olFolder
+        Catch
+            Return Nothing
+        End Try
     End Function
 
     Private Sub lstResults_DoubleClick(sender As Object, e As EventArgs) Handles lstResults.DoubleClick
@@ -237,18 +256,12 @@ Public Class frmSearch
 
     Private Sub tvFolders_NodeMouseClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseClick
         Dim app As outlook.Application = Globals.ThisAddIn.Application
+        Dim fldr As outlook.Folder
         Dim key As String
-        Dim IDs() As String
-        Dim olFolder As outlook.Folder
 
         key = e.Node.Name
-        IDs = Split(key, "|")
-
-        Dim olNs As outlook.NameSpace = app.GetNamespace("MAPI")
-        IDs = Split(key, "|")
-
-        olFolder = olNs.GetFolderFromID(IDs(0), IDs(1))
-        app.ActiveExplorer.CurrentFolder = olFolder
+        fldr = GetOLFolder(key)
+        app.ActiveExplorer.CurrentFolder = fldr
     End Sub
 
     ' Implements the manual sorting of items by columns.
@@ -288,4 +301,56 @@ Public Class frmSearch
         End Function
     End Class
 
+    Private Sub lstResults_ItemDrag(sender As Object, e As ItemDragEventArgs) Handles lstResults.ItemDrag
+        lstResults.DoDragDrop(lstResults.SelectedItems, DragDropEffects.Move)
+    End Sub
+
+    Private Sub tvFolders_DragEnter(sender As Object, e As DragEventArgs) Handles tvFolders.DragEnter
+        If e.Data.GetDataPresent(GetType(ListView.SelectedListViewItemCollection)) Then
+            e.Effect = DragDropEffects.Move
+        End If
+    End Sub
+
+    Private Sub tvFolders_DragDrop(sender As Object, e As DragEventArgs) Handles tvFolders.DragDrop
+        If e.Data.GetDataPresent(GetType(ListView.SelectedListViewItemCollection).ToString(), False) Then
+            Dim loc As Point = (CType(sender, TreeView)).PointToClient(New Point(e.X, e.Y))
+            Dim destNode As TreeNode = (CType(sender, TreeView)).GetNodeAt(loc)
+
+            Dim newKey As String
+
+            tvFolders.SelectedNode = destNode
+
+            Dim lstViewColl As ListView.SelectedListViewItemCollection = CType(e.Data.GetData(GetType(ListView.SelectedListViewItemCollection)), ListView.SelectedListViewItemCollection)
+            For Each lvItem As ListViewItem In lstViewColl
+                newKey = MoveItemToFolder(lvItem.Name, destNode.Name)
+                lvItem.Name = newKey
+                'lvItem.Remove()
+            Next lvItem
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Moves the mailitem specified by itemkey into the folder specified by folderkey
+    ''' Returns the key of the moved item, where key = EntryID|StoreID
+    ''' </summary>
+    ''' <param name="ItemKey"></param>
+    ''' <param name="FolderKey"></param>
+    ''' <returns></returns>
+    Function MoveItemToFolder(ItemKey As String, FolderKey As String) As String
+        Dim mlIt As outlook.MailItem
+        Dim fldr As outlook.Folder
+        Dim newItem As outlook.MailItem
+
+        mlIt = GetMailItem(ItemKey)
+        fldr = GetOLFolder(FolderKey)
+        If mlIt Is Nothing Or fldr Is Nothing Then Return ""
+
+        Try
+            newItem = mlIt.Move(fldr)
+            Return newItem.EntryID & "|" & fldr.StoreID
+        Catch 'move was not successful => new Key is the old key
+            Return ItemKey
+        End Try
+
+    End Function
 End Class

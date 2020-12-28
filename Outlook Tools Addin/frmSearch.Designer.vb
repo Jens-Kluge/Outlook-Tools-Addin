@@ -32,8 +32,10 @@ Partial Class frmSearch
         '
         'tvFolders
         '
+        Me.tvFolders.AllowDrop = True
         Me.tvFolders.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
             Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
+        Me.tvFolders.HideSelection = False
         Me.tvFolders.Location = New System.Drawing.Point(28, 80)
         Me.tvFolders.Name = "tvFolders"
         Me.tvFolders.Size = New System.Drawing.Size(232, 427)

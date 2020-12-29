@@ -6,6 +6,9 @@ Imports outlook = Microsoft.Office.Interop.Outlook
 Public Class frmSearch
 
     Private fmAttachments As frmAttachments
+    Private m_lstColumnSorter As ColumnSorter = New ColumnSorter()
+
+#Region "Folder view handling"
 
     Private Sub btnLoadFolders_Click(sender As Object, e As EventArgs) Handles btnLoadFolders.Click
 
@@ -57,15 +60,58 @@ Public Class frmSearch
 
     End Sub
 
+    Private Sub tvFolders_NodeMouseDoubleClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseDoubleClick
+        SearchOLItems()
+    End Sub
+
+    ''' <summary>
+    ''' Drag and drop support, show symbol when cursor enters control boundaries
+    ''' </summary>
+    ''' <param name="sender"></param>
+    ''' <param name="e"></param>
+    Private Sub tvFolders_DragEnter(sender As Object, e As DragEventArgs) Handles tvFolders.DragEnter
+        If e.Data.GetDataPresent(GetType(ListView.SelectedListViewItemCollection)) Then
+            e.Effect = DragDropEffects.Move
+        End If
+    End Sub
+
+    Private Sub tvFolders_DragDrop(sender As Object, e As DragEventArgs) Handles tvFolders.DragDrop
+        If e.Data.GetDataPresent(GetType(ListView.SelectedListViewItemCollection).ToString(), False) Then
+            Dim loc As Point = (CType(sender, TreeView)).PointToClient(New Point(e.X, e.Y))
+            Dim destNode As TreeNode = (CType(sender, TreeView)).GetNodeAt(loc)
+
+            Dim newKey As String
+
+            tvFolders.SelectedNode = destNode
+
+            Dim lstViewColl As ListView.SelectedListViewItemCollection = CType(e.Data.GetData(GetType(ListView.SelectedListViewItemCollection)), ListView.SelectedListViewItemCollection)
+            For Each lvItem As ListViewItem In lstViewColl
+                newKey = MoveItemToFolder(lvItem.Name, destNode.Name)
+                lvItem.Name = newKey
+                'lvItem.Remove()
+            Next lvItem
+        End If
+    End Sub
+
+    Private Sub tvFolders_NodeMouseClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseClick
+        Dim app As outlook.Application = Globals.ThisAddIn.Application
+        Dim fldr As outlook.Folder
+        Dim key As String
+
+        key = e.Node.Name
+        fldr = GetOLFolder(key)
+        app.ActiveExplorer.CurrentFolder = fldr
+    End Sub
+
+#End Region
+
     Private Sub txtSearch_KeyDown(sender As Object, e As KeyEventArgs) Handles txtSearch.KeyDown
         If e.KeyCode = Keys.Enter Then
             SearchOLItems()
         End If
     End Sub
 
-    Private Sub tvFolders_NodeMouseDoubleClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseDoubleClick
-        SearchOLItems()
-    End Sub
+#Region "Result list handling"
     ''' <summary>
     ''' Loop through all folder and subfolder items one by one and search for the searchstring
     ''' </summary>
@@ -96,6 +142,7 @@ Public Class frmSearch
             MsgBox(ex.Message)
         Finally
             lstResults.EndUpdate()
+            lstResults.ListViewItemSorter = m_lstColumnSorter
             Me.Cursor = Cursors.Default
         End Try
 
@@ -122,13 +169,14 @@ Public Class frmSearch
         Dim jnlIt As outlook.JournalItem
         Dim tskIt As outlook.TaskItem
         Dim lvi As ListViewItem
+        Dim lsi As ListViewItem.ListViewSubItem
 
         For Each myitem In SearchFolder.Items
-            'Debug.Print myitem.Class
+
             If myitem.Class = outlook.OlObjectClass.olMail Then
                 mailIt = myitem
 
-                If InStr(1, mailIt.Subject, searchString) > 0 Then
+                If searchString = "" OrElse InStr(1, mailIt.Subject, searchString) > 0 Then
 
                     lvi = New ListViewItem() With {.Name = mailIt.EntryID & "|" & SearchFolder.StoreID, .Text = mailIt.Subject}
                     lstResults.Items.Add(lvi)
@@ -138,8 +186,10 @@ Public Class frmSearch
                     Else
                         lvi.SubItems.Add("")
                     End If
-                    lvi.SubItems.Add(text:=mailIt.SentOn)
-                    lvi.SubItems.Add(text:=mailIt.ReceivedTime)
+                    lsi = lvi.SubItems.Add(text:=mailIt.SentOn)
+                    lsi.Tag = mailIt.SentOn
+                    lsi = lvi.SubItems.Add(text:=mailIt.ReceivedTime)
+                    lsi.Tag = mailIt.ReceivedTime
 
                     Found = True
                 End If
@@ -163,6 +213,46 @@ Public Class frmSearch
         For Each subfolder In SearchFolder.Folders
             ListFldrItems(subfolder, searchString)
         Next
+
+    End Sub
+
+    Private Sub lstResults_DoubleClick(sender As Object, e As EventArgs) Handles lstResults.DoubleClick
+        Dim mailIt As outlook.MailItem
+        Dim app As outlook.Application = Globals.ThisAddIn.Application
+        Dim key As String
+
+        If lstResults.SelectedItems.Count = 0 Then Exit Sub
+
+        key = lstResults.SelectedItems(0).Name
+        mailIt = GetMailItem(key)
+
+        If Not (mailIt Is Nothing) Then
+            mailIt.GetInspector.Activate()
+        End If
+
+    End Sub
+
+    Private Sub lstResults_ColumnClick(sender As Object, e As ColumnClickEventArgs) Handles lstResults.ColumnClick
+
+        Dim myListView As ListView = CType(sender, ListView)
+
+        ' Determine if clicked column Is already the column that Is being sorted.
+        If e.Column = m_lstColumnSorter.SortColumn Then
+            '' Reverse the current sort direction for this column.
+            If m_lstColumnSorter.Order = SortOrder.Ascending Then
+                m_lstColumnSorter.Order = SortOrder.Descending
+            Else
+                m_lstColumnSorter.Order = SortOrder.Ascending
+            End If
+        Else
+            ' Set the column number that Is to be sorted; default to ascending.
+            m_lstColumnSorter.SortColumn = e.Column
+            m_lstColumnSorter.Order = SortOrder.Ascending
+        End If
+
+        ' Perform the sort with these New sort options.
+        myListView.Sort()
+        'myListView.SetSortIcon(m_lstColumnSorter.SortColumn, m_lstColumnSorter.Order)
 
     End Sub
 
@@ -197,6 +287,13 @@ Public Class frmSearch
         End If
 
     End Sub
+
+    'Drag and drop support
+    Private Sub lstResults_ItemDrag(sender As Object, e As ItemDragEventArgs) Handles lstResults.ItemDrag
+        lstResults.DoDragDrop(lstResults.SelectedItems, DragDropEffects.Move)
+    End Sub
+
+#End Region
 
     Function GetMailItem(ByVal key As String) As outlook.MailItem
         Dim IDs() As String
@@ -235,75 +332,6 @@ Public Class frmSearch
         End Try
     End Function
 
-    Private Sub lstResults_DoubleClick(sender As Object, e As EventArgs) Handles lstResults.DoubleClick
-        Dim mailIt As outlook.MailItem
-        Dim app As outlook.Application = Globals.ThisAddIn.Application
-        Dim key As String
-
-        If lstResults.SelectedItems.Count = 0 Then Exit Sub
-
-        key = lstResults.SelectedItems(0).Name
-        mailIt = GetMailItem(key)
-
-        If Not (mailIt Is Nothing) Then
-            mailIt.GetInspector.Activate()
-        End If
-
-
-    End Sub
-
-    Private Sub lstResults_ColumnClick(sender As Object, e As ColumnClickEventArgs) Handles lstResults.ColumnClick
-
-        If lstResults.Sorting = SortOrder.Ascending Then
-            lstResults.Sorting = SortOrder.Descending
-            lstResults.ListViewItemSorter = New ListViewItemComparer(e.Column, lstResults.Sorting)
-        Else
-            lstResults.Sorting = SortOrder.Ascending
-            lstResults.ListViewItemSorter = New ListViewItemComparer(e.Column, lstResults.Sorting)
-        End If
-
-    End Sub
-
-    Private Sub tvFolders_NodeMouseClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvFolders.NodeMouseClick
-        Dim app As outlook.Application = Globals.ThisAddIn.Application
-        Dim fldr As outlook.Folder
-        Dim key As String
-
-        key = e.Node.Name
-        fldr = GetOLFolder(key)
-        app.ActiveExplorer.CurrentFolder = fldr
-    End Sub
-
-
-
-    Private Sub lstResults_ItemDrag(sender As Object, e As ItemDragEventArgs) Handles lstResults.ItemDrag
-        lstResults.DoDragDrop(lstResults.SelectedItems, DragDropEffects.Move)
-    End Sub
-
-    Private Sub tvFolders_DragEnter(sender As Object, e As DragEventArgs) Handles tvFolders.DragEnter
-        If e.Data.GetDataPresent(GetType(ListView.SelectedListViewItemCollection)) Then
-            e.Effect = DragDropEffects.Move
-        End If
-    End Sub
-
-    Private Sub tvFolders_DragDrop(sender As Object, e As DragEventArgs) Handles tvFolders.DragDrop
-        If e.Data.GetDataPresent(GetType(ListView.SelectedListViewItemCollection).ToString(), False) Then
-            Dim loc As Point = (CType(sender, TreeView)).PointToClient(New Point(e.X, e.Y))
-            Dim destNode As TreeNode = (CType(sender, TreeView)).GetNodeAt(loc)
-
-            Dim newKey As String
-
-            tvFolders.SelectedNode = destNode
-
-            Dim lstViewColl As ListView.SelectedListViewItemCollection = CType(e.Data.GetData(GetType(ListView.SelectedListViewItemCollection)), ListView.SelectedListViewItemCollection)
-            For Each lvItem As ListViewItem In lstViewColl
-                newKey = MoveItemToFolder(lvItem.Name, destNode.Name)
-                lvItem.Name = newKey
-                'lvItem.Remove()
-            Next lvItem
-        End If
-    End Sub
-
     ''' <summary>
     ''' Moves the mailitem specified by itemkey into the folder specified by folderkey
     ''' Returns the key of the moved item, where key = EntryID|StoreID
@@ -335,9 +363,12 @@ Public Class frmSearch
         AttList = FindAttachments()
 
         If AttList.Count > 0 Then
+            Me.Cursor = Cursors.WaitCursor
+            Me.Update()
             ShowForm(fmAttachments, GetType(frmAttachments))
             fmAttachments.mAttachments = AttList
             fmAttachments.PopulateList()
+            Me.Cursor = Cursors.Default
         End If
 
     End Sub

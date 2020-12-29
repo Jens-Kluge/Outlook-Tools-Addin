@@ -2,6 +2,7 @@
 
 Public Class frmAttachments
     Public mAttachments As List(Of Outlook.Attachment)
+    Private m_lstColumnSorter As ColumnSorter = New ColumnSorter()
 
     Private Sub btnClose_Click(sender As Object, e As EventArgs) Handles btnClose.Click
         Me.Close()
@@ -24,6 +25,8 @@ Public Class frmAttachments
 
     Sub PopulateList()
         Dim lvi As ListViewItem
+        Dim lsi As ListViewItem.ListViewSubItem
+
         Dim i As Integer = 0
         Try
             lvAttachments.Items.Clear()
@@ -35,7 +38,8 @@ Public Class frmAttachments
                 lvi = New ListViewItem() With {.Name = i, .Text = attIt.FileName}
                 lvAttachments.Items.Add(lvi)
                 lvi.SubItems.Add(attIt.DisplayName)
-                lvi.SubItems.Add(attIt.Size)
+                lsi = lvi.SubItems.Add(attIt.Size)
+                lsi.Tag = CType(attIt.Size, Integer)
                 If InStr(attIt.FileName, ".") > 0 Then
                     lvi.SubItems.Add(Split(attIt.FileName, ".")(1))
                 End If
@@ -44,19 +48,32 @@ Public Class frmAttachments
             MsgBox(ex.Message)
         Finally
             lvAttachments.EndUpdate()
+            lvAttachments.ListViewItemSorter = m_lstColumnSorter
         End Try
 
     End Sub
 
     Private Sub lvAttachments_ColumnClick(sender As Object, e As ColumnClickEventArgs) Handles lvAttachments.ColumnClick
 
-        If lvAttachments.Sorting = SortOrder.Ascending Then
-            lvAttachments.Sorting = SortOrder.Descending
-            lvAttachments.ListViewItemSorter = New ListViewItemComparer(e.Column, lvAttachments.Sorting)
+        Dim myListView As ListView = CType(sender, ListView)
+
+        ' Determine if clicked column Is already the column that Is being sorted.
+        If e.Column = m_lstColumnSorter.SortColumn Then
+            '' Reverse the current sort direction for this column.
+            If m_lstColumnSorter.Order = SortOrder.Ascending Then
+                m_lstColumnSorter.Order = SortOrder.Descending
+            Else
+                m_lstColumnSorter.Order = SortOrder.Ascending
+            End If
         Else
-            lvAttachments.Sorting = SortOrder.Ascending
-            lvAttachments.ListViewItemSorter = New ListViewItemComparer(e.Column, lvAttachments.Sorting)
+            ' Set the column number that Is to be sorted; default to ascending.
+            m_lstColumnSorter.SortColumn = e.Column
+            m_lstColumnSorter.Order = SortOrder.Ascending
         End If
+
+        ' Perform the sort with these New sort options.
+        myListView.Sort()
+
     End Sub
 
 End Class

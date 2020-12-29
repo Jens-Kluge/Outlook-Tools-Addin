@@ -360,17 +360,18 @@ Public Class frmSearch
     Private Sub bnAttachments_Click(sender As Object, e As EventArgs) Handles bnAttachments.Click
         Dim AttList As List(Of outlook.Attachment)
 
+        Me.Cursor = Cursors.WaitCursor
         AttList = FindAttachments()
 
         If AttList.Count > 0 Then
-            Me.Cursor = Cursors.WaitCursor
-            Me.Update()
+
             ShowForm(fmAttachments, GetType(frmAttachments))
             fmAttachments.mAttachments = AttList
             fmAttachments.PopulateList()
-            Me.Cursor = Cursors.Default
+
         End If
 
+        Me.Cursor = Cursors.Default
     End Sub
 
     ''' <summary>

@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "Outlook Tools Addin", "Outlook Tools Addin\Outlook Tools Addin.vbproj", "{56088B52-DC09-401E-A77B-C4F00F26EEE0}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Outlook Tools Setup", "Outlook Tools Setup\Outlook Tools Setup.vdproj", "{B0AA68FC-1920-491D-BBF7-FC8BBB3DDDD9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,8 @@ Global
 		{56088B52-DC09-401E-A77B-C4F00F26EEE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56088B52-DC09-401E-A77B-C4F00F26EEE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{56088B52-DC09-401E-A77B-C4F00F26EEE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0AA68FC-1920-491D-BBF7-FC8BBB3DDDD9}.Debug|Any CPU.ActiveCfg = Debug
+		{B0AA68FC-1920-491D-BBF7-FC8BBB3DDDD9}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

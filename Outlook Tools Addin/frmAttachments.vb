@@ -1,4 +1,6 @@
 ﻿Imports System.Windows.Forms
+Imports System.IO
+Imports System.Diagnostics
 
 Public Class frmAttachments
     Public mAttachments As List(Of Outlook.Attachment)
@@ -34,15 +36,17 @@ Public Class frmAttachments
             lvAttachments.BeginUpdate()
 
             For Each attIt In mAttachments
-                i += 1
                 lvi = New ListViewItem() With {.Name = i, .Text = attIt.FileName}
+                lvi.Tag = i
                 lvAttachments.Items.Add(lvi)
                 lvi.SubItems.Add(attIt.DisplayName)
                 lsi = lvi.SubItems.Add(attIt.Size)
+                'set the tag value for sorting purposes
                 lsi.Tag = CType(attIt.Size, Integer)
                 If InStr(attIt.FileName, ".") > 0 Then
                     lvi.SubItems.Add(Split(attIt.FileName, ".")(1))
                 End If
+                i += 1
             Next
         Catch ex As Exception
             MsgBox(ex.Message)
@@ -75,5 +79,61 @@ Public Class frmAttachments
         myListView.Sort()
 
     End Sub
+
+    Public Sub saveAtt(attIt As Outlook.Attachment, Optional bDisplay As Boolean = False)
+
+        Dim saveFolder As String
+        Dim dateFormat, FilePath As String
+        Dim fi As FileInfo
+
+        dateFormat = Now.ToString("yyyy-MM-dd H-mm")
+        saveFolder = Path.GetTempPath
+
+        FilePath = saveFolder & attIt.DisplayName
+        Try
+            attIt.SaveAsFile(FilePath)
+            If bDisplay Then
+                fi = New FileInfo(FilePath)
+                FileInfoExtensions.Unblock(fi)
+                Process.Start(FilePath)
+
+            End If
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+
+    End Sub
+
+
+    Public Sub UnblockAttachments()
+
+        Dim saveFolder As String
+        Dim dateFormat, FilePath As String
+        Dim fi As FileInfo
+
+        dateFormat = Now.ToString("yyyy-MM-dd H-mm")
+        saveFolder = Path.GetTempPath
+
+        Try
+            For Each attIt In mAttachments
+                FilePath = saveFolder & " " & attIt.DisplayName
+
+                attIt.SaveAsFile(FilePath)
+                fi = New FileInfo(FilePath)
+                FileInfoExtensions.Unblock(fi)
+            Next
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+    End Sub
+
+    Private Sub lvAttachments_DoubleClick(sender As Object, e As EventArgs) Handles lvAttachments.DoubleClick
+
+        If lvAttachments.SelectedItems.Count = 0 Then Exit Sub
+
+        saveAtt(mAttachments(lvAttachments.SelectedItems(0).Tag), True)
+
+    End Sub
+
 
 End Class

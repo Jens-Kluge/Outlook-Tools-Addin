@@ -2,10 +2,14 @@
 Imports System.Collections
 Imports System.Diagnostics
 Imports System.Globalization
+Imports System.IO
+Imports Trinet.Core.IO.Ntfs
 
 Module modUtilities
-    Public Sub BringFormsToFront()
+
 #Region "Windows Forms"
+
+    Public Sub BringFormsToFront()
         Dim fms As FormCollection = Application.OpenForms
 
         If (fms Is Nothing) Then
@@ -44,41 +48,29 @@ Module modUtilities
     End Sub
 #End Region
 
-    ' Implements the manual sorting of items by columns.
-    Class ListViewItemComparer
-        Implements IComparer
+    Public Class FileInfoExtensions
 
-        Private col As Integer
-        Private Shared sortOrderModifier As Integer = 1
+        Private Const ZoneIdentifierStreamName As String = "Zone.Identifier"
 
-        Public Sub New()
-            col = 0
-        End Sub
+        Public Shared Sub Unblock(file As FileInfo)
 
-        Public Sub New(column As Integer, srtOrder As SortOrder)
-            col = column
-            If (srtOrder = SortOrder.Descending) Then
-                sortOrderModifier = -1
-            ElseIf (srtOrder = SortOrder.Ascending) Then
-                sortOrderModifier = 1
+            If file Is Nothing Then
+
+                Throw New ArgumentNullException("file")
+            End If
+
+            If Not file.Exists Then
+
+                Throw New FileNotFoundException("Unable to find the specified file.", file.FullName)
+            End If
+
+            If file.Exists AndAlso file.AlternateDataStreamExists(ZoneIdentifierStreamName) Then
+
+                file.DeleteAlternateDataStream(ZoneIdentifierStreamName)
+
             End If
         End Sub
 
-        Public Function Compare(x As Object, y As Object) As Integer Implements IComparer.Compare
-            Dim returnVal As Integer
-            'debug.print(CType(x, ListViewItem).SubItems(col).GetType().Name)
-            If TypeOf x Is Date And TypeOf y Is Date Then
-                returnVal = DateTime.Compare(x, y)
-            ElseIf (TypeOf x Is Double And TypeOf y Is Double) Or (TypeOf x Is Integer And TypeOf y Is Integer) Then
-                returnVal = x.CompareTo(y)
-            Else
-                ' If not numeric and not date then compare as string
-                returnVal = [String].Compare(CType(x, ListViewItem).SubItems(col).Text, CType(y, ListViewItem).SubItems(col).Text)
-            End If
-
-            Return returnVal * sortOrderModifier
-
-        End Function
     End Class
 
     Public Class ColumnSorter
